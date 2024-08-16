@@ -20,7 +20,7 @@ const URI string = "mongodb://jrporto:123@localhost/?retryWrites=true&w=majority
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 type UserCredentials struct {
-	id       primitive.ObjectID `bson:"_id"`
+	Id       primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 	Username string             `json:"username" bson:"login"`
 	Password string             `json:"password" bson:"password"`
 }
@@ -68,17 +68,14 @@ func AuthenticateUser(login *io.ReadCloser) (*http.Cookie, error) {
 	filter := credentialsToFilter(*credentials)
 	queryResult := collection.FindOne(ctx, filter)
 
-    account := &UserCredentials{}
-    // a, _ := queryResult.Raw()
-    // log.Printf("%v", a)
-	err := queryResult.Decode(&account)
-    log.Printf("%v", account)
+	err := queryResult.Decode(&credentials)
+	// log.Printf("No bson %s e %s | %v", credentials.Username, credentials.Password, credentials.Id)
 	if err != nil {
 		log.Printf("Error na query: %s", err.Error())
 		return nil, err
 	}
-	log.Printf("User entrou: %s", account.Username)
-	cookie, err := getNewCookie(account.id)
+	cookie, err := getNewCookie(credentials.Id)
+    log.Printf("Biscoite pro %s pronto!", credentials.Username)
 	return cookie, err
 }
 
@@ -88,7 +85,7 @@ func getNewCookie(id primitive.ObjectID) (*http.Cookie, error) {
 	for i := range cookieValue {
 		cookieValue[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
-    filter := bson.D{{Key: "_id", Value: id}}
+	filter := bson.D{{Key: "_id", Value: id}}
 	stmt := bson.D{{Key: "$set", Value: bson.D{{Key: "cookie", Value: cookieValue}}}}
 	collection := GetCollection("users")
 	// count, error := collection.UpdateByID(ctx, id, stmt)
@@ -96,10 +93,10 @@ func getNewCookie(id primitive.ObjectID) (*http.Cookie, error) {
 	switch {
 	case error != nil:
 		log.Printf("Error on cookie generation %s", error.Error())
-        return nil, error
+		return nil, error
 	case count.MatchedCount == 0:
-        log.Printf("No cookies generated for user id: %v", id)
-        return nil, fmt.Errorf("Error on cookie generation")
+		log.Printf("No cookies generated for user id: %v", id)
+		return nil, fmt.Errorf("Error on cookie generation")
 	}
 	log.Printf("setting user cookie: %v", cookieValue)
 	return &http.Cookie{Name: "sessionId", Value: string(cookieValue)}, nil

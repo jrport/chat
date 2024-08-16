@@ -7,6 +7,8 @@ import (
 )
 
 func main() {
+    log.Print("Booting server...")
+    log.Print("Listening on :8080!")
 	http.HandleFunc("/login", MakeHandle(LoginRoute))
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
@@ -30,9 +32,11 @@ func LoginRoute(w http.ResponseWriter, r *http.Request) error{
     cookie, error := auth.AutenticateLogin(&r.Body)
     http.SetCookie(w, cookie)
     if error != nil {
-        log.Fatalf("Error: %v", error.Error())
+        log.Printf("Error: %v", error.Error())
+        w.WriteHeader(http.StatusUnauthorized)
+    } else{
+        w.WriteHeader(http.StatusNoContent)
     }
-	w.Write([]byte("oi"))
 	return nil
 }
 

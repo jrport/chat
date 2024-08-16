@@ -4,13 +4,13 @@ import '@fontsource/roboto/700.css';
 import '@fontsource/roboto/900.css';
 
 :root {
-    --primary: #13250e;
+    --primary: #108554;
     --secondary: #4c8435;
 }
 
 
 body {
-    background-color: #13250e;
+    background-color: #13171f;
     color: white;
     font-size: 1.2rem;
     font-family: 'Roboto', sans-serif;

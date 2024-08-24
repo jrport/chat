@@ -2,25 +2,10 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
-	"time"
-
-	"golang.org/x/crypto/bcrypt"
 )
-
-type Credentials struct {
-	Email        string    `json:"email" bson:"email"`
-	PasswordHash string    `json:"password" bson:"password_hash"`
-	CreatedAt    time.Time `bson:"created_at"`
-	UpdatedAt    time.Time `bson:"updated_at"`
-}
-
-
-func (c *Credentials) Hash() {
-	hashed, _ := bcrypt.GenerateFromPassword([]byte(c.PasswordHash), bcrypt.DefaultCost)
-	c.PasswordHash = string(hashed)
-}
 
 func ReadJson(r *io.ReadCloser) (*Credentials, error) {
 	credentials := new(Credentials)
@@ -30,7 +15,15 @@ func ReadJson(r *io.ReadCloser) (*Credentials, error) {
 	if err != nil {
 		return nil, err
 	}
-	return credentials, nil
+	switch {
+	case credentials.Email == "":
+		return nil, fmt.Errorf("Email é obrigatório")
+	case credentials.PasswordHash == "":
+		return nil, fmt.Errorf("Senha é obrigatória")
+	default:
+        credentials.Confirmed = false
+		return credentials, nil
+	}
 }
 
 func WriteJson(w http.ResponseWriter, credentials *Credentials) error {

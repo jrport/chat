@@ -14,19 +14,14 @@ func CreateUser(credentials *utils.Credentials) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
-	stmt := bson.D{
-		primitive.E{Key: "email", Value: credentials.Email},
-		primitive.E{Key: "password_hash", Value: credentials.PasswordHash},
-		primitive.E{Key: "created_at", Value: time.Now()},
-		primitive.E{Key: "updated_at", Value: time.Now()},
-	}
+    credentials.Hash()
 
 	collection, err := GetCollection("users")
 	if err != nil {
 		return err
 	}
 
-	_, err = collection.InsertOne(ctx, stmt)
+	_, err = collection.InsertOne(ctx, credentials)
 	if err != nil {
 		return err
 	}

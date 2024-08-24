@@ -20,7 +20,7 @@ func FindCookie(sessionId string) (*utils.Cookie, error) {
 		return nil, err
 	}
 
-	stmt := bson.D{primitive.E{Key: "id", Value: sessionId}}
+	stmt := bson.D{primitive.E{Key: "value", Value: sessionId}}
 	queryResult := cookies.FindOne(ctx, stmt)
 	if err := queryResult.Err(); err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func DeleteCookie(sessionCookie *utils.Cookie) error {
 		return err
 	}
 
-	stmt := bson.D{primitive.E{Key: "id", Value: sessionCookie.Id}}
+	stmt := bson.D{primitive.E{Key: "_id", Value: sessionCookie.ID}}
 	_, err = cookies.DeleteOne(ctx, stmt)
 	if err != nil {
 		log.Printf("Error on cookie deletion: %v", err.Error())
@@ -59,31 +59,43 @@ func CreateCookie(email string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
+    users, err := GetCollection("users")
+	if err != nil {
+		log.Printf("Error on db connection: %v", err.Error())
+		return "", err
+	}
+
+    user := utils.Credentials{}
+    userQuery := users.FindOne(ctx, bson.D{bson.E{Key: "email", Value: email}})
+    err = userQuery.Decode(&user)
+    if err != nil {
+		log.Printf("User not found on session generation: %v", err.Error())
+		return "", err
+    }
+
 	cookies, err := GetCollection("cookies")
 	if err != nil {
 		log.Printf("Error on db connection: %v", err.Error())
 		return "", err
 	}
 
-    newCookie, err := utils.GetRandomCookie()
+    newSessionID, err := utils.GetRandomCookie()
 	if err != nil {
 		log.Printf("Error on cookie generation: %v", err.Error())
 		return "", err
 	}
+    newCookie := utils.Cookie{
+        UserId: user.ID,
+        Value: newSessionID,
+        ExpireAt: time.Now().Add(10 * time.Minute),
+        CreatedAt: time.Now(),
+    }
 
-	stmt := bson.D{
-        primitive.E{Key: "email", Value: email},
-        primitive.E{Key: "created_at", Value: time.Now()},
-		// primitive.E{Key: "expire_at", Value: (time.Now().Add(5 * time.Minute))},
-		primitive.E{Key: "expire_at", Value: (time.Now().Add(10 * time.Second))},
-		primitive.E{Key: "id", Value: newCookie},
-	}
-
-    _, err = cookies.InsertOne(ctx, stmt)
+    _, err = cookies.InsertOne(ctx, newCookie)
 	if err != nil {
 		log.Printf("Error on saving new cookie: %v", err.Error())
 		return "", err
 	}
 
-    return newCookie, nil
+    return newSessionID, nil
 }

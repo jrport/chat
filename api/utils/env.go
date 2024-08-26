@@ -10,6 +10,8 @@ import (
 type Settings struct {
     Email string `env:"Email"`
     Password string `env:"Password"`
+    Host string `env:"Host"`
+    Port string `env:"Port"`
 }
 
 var E Settings

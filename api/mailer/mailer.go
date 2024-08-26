@@ -1,44 +1,64 @@
 package mailer
 
 import (
-	// "chat/api/utils"
-	// "context"
 	"fmt"
+	"log"
 	"net/smtp"
-	// "time"
-	// "google.golang.org/api/gmail/v1"
 )
 
-func Run() {
-	// ctx, cancel := context.WithTimeout(context.Background(), time.Minute*2)
-	// defer cancel()
-	// Sender data
-	from := "jr.net.solucoes@gmail.com"
-	password := "Mui9bdwd!Qm7YVu"
+type EmailConfiguration struct {
+	Email    string
+	Password string
+	Host     string
+	Port     string
+}
 
-	// Receiver email address
-	to := []string{
-		"joao6roberto@gmail.com",
+type EmailService struct {
+    Conf *EmailConfiguration
+}
+
+func NewEmailConfiguration(email string, password string, host string, port string) *EmailConfiguration {
+	return &EmailConfiguration{
+		Email:    email,
+		Password: password,
+		Host:     host,
+		Port:     port,
 	}
+}
 
-	// smtp server configuration
-	smtpHost := "smtp.gmail.com"
-	smtpPort := "587"
+func NewEmailService(conf *EmailConfiguration) *EmailService{
+    return &EmailService{
+        Conf: conf,
+    }
+}
 
-	// Message
-	message := []byte("Subject: Test Subject\r\n" +
-		"\r\n" +
-		"This is the body of the email")
+func (e *EmailService)Run(DestinationChanel chan string){
+    defer close(DestinationChanel)
 
-	// Authentication
-	auth := smtp.PlainAuth("", from, password, smtpHost)
+    for {
+        select {
+        case email := <- DestinationChanel:
+            log.Print("Sending email to ", email)
+            e.sendEmail(email)
+            log.Print("Sent email to ", email)
+        }
+    }
 
-	// Sending email
-	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, message)
+}
+
+func (e *EmailService)sendEmail(email string) {
+    message := "MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\r\n"
+    message += "From: " + e.Conf.Email + "\r\n"
+    message += "To: " + email + ";\r\n"
+    message += "Subject: " + "Confirmação de cadastro;" + "\r\n"
+    message += "\r\n Clique <a href='http://localhost:8080/verify?token='>aqui</a> para confirmar seu email\r\n"
+
+	auth := smtp.PlainAuth("", e.Conf.Email, e.Conf.Password, e.Conf.Host)
+
+	err := smtp.SendMail(e.Conf.Host+":"+e.Conf.Port, auth, e.Conf.Email, []string{email}, []byte(message))
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	fmt.Println("Email Sent Successfully!")
-	fmt.Println("Email Sent!")
 }

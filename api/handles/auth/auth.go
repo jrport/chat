@@ -2,6 +2,7 @@ package handles
 
 import (
 	"chat/api/db"
+	"chat/api/mailer"
 	"chat/api/utils"
 	"fmt"
 	"log"
@@ -9,6 +10,8 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+var EmailChan = make(chan string)
 
 func RegisterUserHandle(w http.ResponseWriter, r *http.Request) error {
 	if r.Method != http.MethodPost {
@@ -22,7 +25,9 @@ func RegisterUserHandle(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	log.Println("scheduling confirmation mail")
 	err = db.CreateUser(credentials)
+	EmailChan <- credentials.Email
 
 	if err != nil {
 		errorMsg := fmt.Sprintf("Não foi possível concluir o cadastro: %v", err.Error())
@@ -61,10 +66,10 @@ func LoginUserHandle(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-    if !savedCredentials.Confirmed {
+	if !savedCredentials.Confirmed {
 		http.Error(w, "Email não confirmado", http.StatusUnauthorized)
 		return err
-    }
+	}
 
 	cookieId, err := db.CreateCookie(savedCredentials.Email)
 	cookie := http.Cookie{
@@ -100,17 +105,29 @@ func LogOutHandle(w http.ResponseWriter, r *http.Request) error {
 		http.Error(w, "Cookie inválido", http.StatusForbidden)
 		return err
 	}
-    if err = db.DeleteCookie(cookie); err != nil {
-        http.Error(w, "Sessão não autenticada", http.StatusForbidden)
-        return err
-    }
-    
-    w.WriteHeader(http.StatusAccepted)
-    fmt.Fprint(w, "Sessão encerrada com sucesso")
+	if err = db.DeleteCookie(cookie); err != nil {
+		http.Error(w, "Sessão não autenticada", http.StatusForbidden)
+		return err
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+	fmt.Fprint(w, "Sessão encerrada com sucesso")
 	return nil
 }
 
 func PingRoute(w http.ResponseWriter, _ *http.Request) error {
 	w.Write([]byte("bla"))
 	return nil
+}
+
+func init() {
+	mailerConfig := mailer.NewEmailConfiguration(
+		utils.E.Email,
+		utils.E.Password,
+		utils.E.Host,
+		utils.E.Port,
+	)
+	EmailService := mailer.NewEmailService(mailerConfig)
+
+	go EmailService.Run(EmailChan)
 }

@@ -8,28 +8,28 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func GetClient() (*mongo.Client, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
+const URI string = "mongodb://localhost:27017"
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost"))
-	if err != nil {
-		return nil, err
-	}
+func GetClient() (*mongo.Client, error){ 
+    timeoutCtx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+    defer cancel()
 
-	if err = client.Ping(ctx, nil); err != nil {
-		return nil, err
-	}
-	return client, nil
+    clientOpts := options.Client().ApplyURI(URI)
+	client, err := mongo.Connect(timeoutCtx, clientOpts)
+    if err != nil {
+        return nil, err
+    }
+    return client, nil
 }
 
-func GetCollection(collectionName string) (*mongo.Collection, error) {
-	client, err := GetClient()
-	if err != nil {
-		return nil, err
-	}
+func GetCollection(collection string) (*mongo.Collection, error) {
+    client, err := GetClient()
+    if err != nil {
+        return nil, err
+    } 
+    
+    database := client.Database("chat")
+    c := database.Collection(collection)
 
-	database := client.Database("chat")
-	collection := database.Collection(collectionName)
-	return collection, nil
+    return c, nil
 }

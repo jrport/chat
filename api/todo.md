@@ -4,3 +4,5 @@
         - Calls all setup handlers function from other subdir's like auth, messages, etc.
     - [] Completely remove the init function
         - Make the email service config a global var, have it be initialized by the main function
+- [] Recheck the registration routes for unhandled errors!
+- [] Case of timeout token

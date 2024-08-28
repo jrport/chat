@@ -1,1 +1,6 @@
-- [] fix buffer size to invalidate big bodies on registration
+- ~[] fix buffer size to invalidate big bodies on registration~
+- [] Better segment the handlers/auth
+    - [] Make setup handlers function on handlers
+        - Calls all setup handlers function from other subdir's like auth, messages, etc.
+    - [] Completely remove the init function
+        - Make the email service config a global var, have it be initialized by the main function

@@ -10,6 +10,7 @@ import (
 
 func main() {
     slog.Info("Booting the server...")
+
     if err := http.ListenAndServe(":8080", nil); err != nil {
         slog.Info(err.Error())
         os.Exit(0)

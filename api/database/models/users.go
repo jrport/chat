@@ -5,18 +5,22 @@ import (
 	"chat/api/handles/utils"
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func CreateUser(userAccount *utils.UserRegistration) (*primitive.ObjectID, error){
+func CreateUser(userAccount *utils.UserRegistration) (*primitive.ObjectID, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	users, err := database.GetCollection("users")
+	if err != nil {
+		return nil, err
+	}
+    
+    err = userAccount.Hash()
 	if err != nil {
 		return nil, err
 	}
@@ -30,11 +34,11 @@ func CreateUser(userAccount *utils.UserRegistration) (*primitive.ObjectID, error
 	if !ok {
 		return nil, database.NewDatabaseError(fmt.Sprintf("Unexpected error on insert conversion of %v", id))
 	}
-		
+
 	return &id, nil
 }
 
-func GetUser(userAccount *utils.UserRegistration) (*utils.UserRegistration, error){
+func GetUser(userAccount *utils.UserRegistration) (*utils.UserRegistration, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -42,16 +46,38 @@ func GetUser(userAccount *utils.UserRegistration) (*utils.UserRegistration, erro
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var userInDb utils.UserRegistration
-	log.Printf("b: %v", userAccount)
-	filter := bson.D{bson.E{Key: "email", Value: (*userAccount).Email}}
-	err = users.FindOne(ctx, filter).Decode(userInDb)
-	
+	filter := bson.D{bson.E{Key: "Email", Value: (*userAccount).Email}}
+	err = users.FindOne(ctx, filter).Decode(&userInDb)
+
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	return &userInDb, nil
 }
 
+func ValidateUser(userId string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	users, err := database.GetCollection("users")
+	if err != nil {
+		return err
+	}
+
+	id, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return err
+	}
+
+	filter := bson.D{bson.E{Key: "_id", Value: id}}
+    update := bson.M{"$set": bson.M{"Confirmed": true}}
+	err = users.FindOneAndUpdate(ctx, filter, update).Err()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

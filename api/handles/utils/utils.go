@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type ResponseError struct {
@@ -26,13 +27,23 @@ func (r ResponseError) Error() string {
 }
 
 type UserRegistration struct {
-	ID                   primitive.ObjectID `json:"-" bson:"_id"`
+	ID                   primitive.ObjectID `json:"-" bson:"_id,omitempty"`
 	Email                string             `json:"email" bson:"Email"`
 	Password             string             `json:"password" bson:"Password"`
 	PasswordConfirmation string             `json:"password-confirmation" bson:"-"`
 	Confirmed            bool               `json:"-" bson:"Confirmed"`
 	CreatedAt            time.Time          `json:"-" bson:"CreatedAt"`
 	UpdatedAt            time.Time          `json:"-" bson:"UpdatedAt"`
+}
+
+func (u *UserRegistration)Hash() error{
+    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+    if err != nil {
+        return err
+    }
+
+    u.Password = string(hashedPassword)
+    return nil
 }
 
 func SerializeRegistration(rawJson *[]byte) (*UserRegistration, error) {

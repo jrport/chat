@@ -2,7 +2,7 @@ package models
 
 import (
 	"chat/api/database"
-	"chat/api/handles/utils"
+	"chat/api/handles/auth/utils"
 	"context"
 	"fmt"
 	"time"
@@ -48,7 +48,7 @@ func GetUser(userAccount *utils.UserRegistration) (*utils.UserRegistration, erro
 	}
 
 	var userInDb utils.UserRegistration
-	filter := bson.D{bson.E{Key: "Email", Value: (*userAccount).Email}}
+	filter := bson.D{bson.E{Key: "Email", Value: userAccount.Email}}
 	err = users.FindOne(ctx, filter).Decode(&userInDb)
 
 	if err != nil {

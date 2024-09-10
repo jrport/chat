@@ -1,10 +1,12 @@
 package handles
 
 import (
-	"chat/api/handles/registration"
+	"chat/api/handles/auth/registrations"
+	"chat/api/handles/auth/sessions"
 	"chat/api/handles/utils"
 	"chat/api/services/mailer"
-	"log"
+	"fmt"
+	"log/slog"
 	"net/http"
 )
 
@@ -19,24 +21,51 @@ func NewRouter(mailer *mailer.Mailer) *Router{
 }
 
 func (r *Router) SetupRoutes() {
-	log.Print("Setting up routes")
+	slog.Info("Setting up routes")
+	
+	registrationHandle := HandleWithMailer{
+		mailerService: r.Mailer,
+		handleFunc: registration.RegistrationHandleFunc,
+	}
 
-	http.HandleFunc("/register", WithError(registration.RegistrationHandle))
-	http.HandleFunc("/verify", WithError(registration.ValidationHandle))
+	http.Handle("/register", registrationHandle)
+	http.HandleFunc("/verify", HandlerFuncWithError(registration.ValidationHandle))
+	http.HandleFunc("/login", HandlerFuncWithError(sessions.NewSessionHandle))
+	http.HandleFunc("/logout", HandlerFuncWithError(sessions.TerminateSessionHandle))
+	
 
-	log.Print("Routes ready")
+	slog.Info("Routes ready")
 }
 
-func WithError(h HandleWithError) func(http.ResponseWriter, *http.Request) {
+func HandlerFuncWithError(h HandlerWithError) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := h(w, r); err != nil {
-			log.Printf("Error answering route %v | %v", r.URL.Path, err.Error())
+			slog.Info(fmt.Sprintf("Error answering route %v | %v", r.URL.Path, err.Error()))
 			if err.Code == http.StatusInternalServerError {
-				http.Error(w, "Unexpected error on response", err.Code)
+				http.Error(w, "Error: ", err.Code)
+				return
 			}
 			http.Error(w, err.Message, err.Code)
+			return
 		}
 	}
 }
 
-type HandleWithError func(http.ResponseWriter, *http.Request) *utils.ResponseError
+type HandlerWithError func(http.ResponseWriter, *http.Request) *utils.ResponseError
+
+type HandlerWithErrorAndMailer func(http.ResponseWriter, *http.Request, *mailer.Mailer) *utils.ResponseError
+
+type HandleWithMailer struct {
+	mailerService *mailer.Mailer
+	handleFunc HandlerWithErrorAndMailer
+}
+
+func (h HandleWithMailer)ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if err := h.handleFunc(w, r, h.mailerService); err != nil {
+		slog.Info(fmt.Sprintf("Error answering route %v | %v", r.URL.Path, err.Error()))
+		if err.Code == http.StatusInternalServerError {
+			http.Error(w, "Unexpected error on response", err.Code)
+		}
+		http.Error(w, err.Message, err.Code)
+	}
+}

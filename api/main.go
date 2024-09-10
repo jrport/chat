@@ -3,23 +3,22 @@ package main
 import (
 	"chat/api/handles"
 	"chat/api/services/mailer"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/goloop/env"
 )
 
 func init() {
-	log.SetFlags(log.Ltime)
-	log.SetFlags(log.Ldate)
-
 	if err := env.Load(".env"); err != nil {
-		log.Fatalf("%v", err.Error())
+		slog.Error("%v" + err.Error())
+		os.Exit(1)
 	}
 }
 
 func main() {
-	log.Print("Booting server")
+	slog.Info("Booting server")
 
 	MailConfig := mailer.MailOptions{
 		Email: env.Get("EMAIL"),
@@ -30,9 +29,11 @@ func main() {
 
 	mailer := mailer.NewMailer(&MailConfig)
 	router := handles.NewRouter(mailer)
+	go mailer.Run()
 	router.SetupRoutes()
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatal("Shutting down server...")
+		slog.Error("Shutting down server...")
+		os.Exit(1)
 	}
 }

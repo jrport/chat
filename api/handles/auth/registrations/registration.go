@@ -108,6 +108,45 @@ func ValidationHandle(w http.ResponseWriter, r *http.Request) *utils.ResponseErr
     return nil
 }
 
-func PasswordResetHandle(w http.ResponseWriter, r *http.Request) *utils.ResponseError{
+func PasswordResetHandle(w http.ResponseWriter, r *http.Request, m *mailer.Mailer) *utils.ResponseError{
+	if r.Method != http.MethodPost{
+		return utils.NewResponseError("Invalid method", http.StatusMethodNotAllowed)
+	}
+	
+	ct := r.Header.Get("Content-Type")
+	if ct == "" {
+		return utils.NewResponseError("Bad Content-Type", http.StatusBadRequest)
+	} 
+	
+	formBuffer, err := io.ReadAll(r.Body)
+	if err != nil {
+		return handlesUtils.NewResponseError(err.Error(), http.StatusBadRequest)
+	}
+	userRegistration, err := authUtils.SerializeRegistration(&formBuffer)
+	if err != nil {
+		return handlesUtils.NewResponseError(err.Error(), http.StatusInternalServerError)
+	}
+
+	userInDb, err := models.GetUser(userRegistration)
+	if err != nil && err != mongo.ErrNoDocuments {
+		return handlesUtils.NewResponseError("Email not registered", http.StatusNotFound)
+	}
+
+	resetToken, err := tokenService.IssueToken(&userInDb.ID, tokenService.PasswordReset)
+	if err != nil {
+		return handlesUtils.NewResponseError(err.Error(), http.StatusInternalServerError)
+	}
+
+
+	mailOrder := mailer.NewMailerOrder(
+		userRegistration.Email,
+		mailer.RecoverPasswordMail,
+		&map[string]string{
+			"resetToken": *resetToken,
+		},
+	)
+	m.IssueMail(*mailOrder)
+
+    fmt.Fprint(w, "Password reset request issued, please verify your email to proceed!\n")
 	return nil
 }

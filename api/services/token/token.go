@@ -15,6 +15,7 @@ type TokenKind int
 const (
 	Confirmation TokenKind = iota
 	Session
+	PasswordReset
 )
 
 func IssueToken(uid *primitive.ObjectID, tokenType TokenKind) (*string, error) {

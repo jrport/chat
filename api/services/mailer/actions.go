@@ -29,7 +29,7 @@ func (s *Mailer) SendMail(email, subject, body string) error {
 }
 
 func (s *Mailer) SendValidationMail(email, token string) {
-	subject := "Subject: Confirmation Token for WhatsappForum\r\n"
+	subject := "Subject: Confirm your registration for WhatsappForum\r\n"
 
 	url := fmt.Sprintf("http://localhost:8080/verify?token=%s", token)
 	body := fmt.Sprintf(`
@@ -50,5 +50,24 @@ func (s *Mailer) SendValidationMail(email, token string) {
 	slog.Info("Email sent successfully to " + email)
 }
 
-func (s *Mailer) SendForgotPasswordMail(email string) {
+func (s *Mailer) SendForgotPasswordMail(email, token string) {
+	subject := "Subject: Password Reset for WhatsappForum\r\n"
+
+	url := fmt.Sprintf("http://localhost:8080/recovery?token=%s", token)
+	body := fmt.Sprintf(`
+	<html>
+	  <body>
+	    <h1>Oii!</h1>
+		Clique <a href='%s'>aqui</a> para resetar sua senha no WhatsappForum!
+		Se vc não sabe o que é isso só ignora, bjs XOXO
+	  </body>
+	</html>
+	`, url,
+	)
+
+	if err := s.SendMail(email, subject, body); err != nil {
+		slog.Error("Error sending verification email to " + email)
+	}
+
+	slog.Info("Email sent successfully to " + email)
 }

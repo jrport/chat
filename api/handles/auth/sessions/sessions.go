@@ -28,7 +28,7 @@ func NewSessionHandle(w http.ResponseWriter, r *http.Request) *handleUtils.Respo
 		return handleUtils.NewResponseError(err.Error(), http.StatusInternalServerError)
 	}
 
-	userLogin, err := authUtils.SerializeRegistration(&formBuffer)
+	userLogin, err := authUtils.SerializeCredentials(&formBuffer)
 	if err != nil {
 		switch err.(type) {
 		case authUtils.ValidationError:
@@ -53,7 +53,18 @@ func NewSessionHandle(w http.ResponseWriter, r *http.Request) *handleUtils.Respo
 
 	sessToken, err := tokenService.IssueToken(&userInDb.ID, tokenService.Session)
 	if err != nil {
-		return handleUtils.NewResponseError(err.Error(), http.StatusInternalServerError)
+		if _, ok := err.(tokenService.InvaildTokenError); ok {
+			err = tokenService.NewTokenValidationError(tokenService.InvalidToken)
+			return handleUtils.NewResponseError(
+				err.Error(),
+				http.StatusBadRequest,
+			)
+		}
+		return handleUtils.NewResponseError(
+			err.Error(),
+			http.StatusInternalServerError,
+		)
+
 	}
 
 	cookie := &http.Cookie{
@@ -78,7 +89,6 @@ func TerminateSessionHandle(w http.ResponseWriter, r *http.Request) *handleUtils
 		return handleUtils.NewResponseError("Invalid Method", http.StatusMethodNotAllowed)
 	}
 
-	// token := r.URL.Query().Get("token")
 	sessionCookie, err := r.Cookie("sessionId")
 	if err != nil {
 		return handleUtils.NewResponseError("Invalid parameters", http.StatusBadRequest)
@@ -115,7 +125,13 @@ func ValidateSession(w http.ResponseWriter, r *http.Request) *handleUtils.Respon
 
 	_, err := tokenService.ValidateToken(token)
 	if err != nil {
-		return handleUtils.NewResponseError(err.Error(), http.StatusInternalServerError)
+		if _, ok := err.(tokenService.InvaildTokenError); ok {
+			err = tokenService.NewTokenValidationError(tokenService.ExpiredSession)
+		}
+		return handleUtils.NewResponseError(
+			err.Error(),
+			http.StatusBadRequest,
+		)
 	}
 
 	return nil

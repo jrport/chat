@@ -2,9 +2,9 @@ package registration
 
 import (
 	"chat/api/database/models"
+	authUtils "chat/api/handles/auth/utils"
 	"chat/api/handles/utils"
 	handlesUtils "chat/api/handles/utils"
-	authUtils "chat/api/handles/auth/utils"
 	"chat/api/services/mailer"
 	"chat/api/services/token"
 	tokenService "chat/api/services/token"
@@ -16,13 +16,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-
 func RegistrationHandleFunc(w http.ResponseWriter, r *http.Request, m *mailer.Mailer) *utils.ResponseError {
-	if r.Method != http.MethodPost{
-		return handlesUtils.NewResponseError("Invalid method", http.StatusMethodNotAllowed) 
+	if r.Method != http.MethodPost {
+		return handlesUtils.NewResponseError("Invalid method", http.StatusMethodNotAllowed)
 	}
 
-	if ct := r.Header.Get("Content-Type"); ct != "application/json"{
+	if ct := r.Header.Get("Content-Type"); ct != "application/json" {
 		return handlesUtils.NewResponseError("Invalid Content-Type", http.StatusBadRequest)
 	}
 
@@ -30,8 +29,11 @@ func RegistrationHandleFunc(w http.ResponseWriter, r *http.Request, m *mailer.Ma
 	if err != nil {
 		return handlesUtils.NewResponseError(err.Error(), http.StatusBadRequest)
 	}
-	userRegistration, err := authUtils.SerializeRegistration(&formBuffer)
+	userRegistration, err := authUtils.SerializeCredentials(&formBuffer)
 	if err != nil {
+		return handlesUtils.NewResponseError(err.Error(), http.StatusInternalServerError)
+	}
+	if err = authUtils.MatchingPassword(userRegistration); err != nil {
 		return handlesUtils.NewResponseError(err.Error(), http.StatusInternalServerError)
 	}
 
@@ -40,13 +42,13 @@ func RegistrationHandleFunc(w http.ResponseWriter, r *http.Request, m *mailer.Ma
 		return handlesUtils.NewResponseError(err.Error(), http.StatusInternalServerError)
 	}
 
-	if err == nil{
+	if err == nil {
 		switch {
 		case userInDb.Confirmed:
-            err := NewUserRegistrationError(EmailAlreadyInUse)
+			err := NewUserRegistrationError(EmailAlreadyInUse)
 			return handlesUtils.NewResponseError(err.Error(), http.StatusConflict)
-		case !userInDb.Confirmed && time.Since(userInDb.UpdatedAt) < time.Duration(time.Minute * 2):
-            error := NewUserRegistrationError(TokenIssuedRecently)
+		case !userInDb.Confirmed && time.Since(userInDb.UpdatedAt) < time.Duration(time.Minute*2):
+			error := NewUserRegistrationError(TokenIssuedRecently)
 			return handlesUtils.NewResponseError(error.Error(), http.StatusTooManyRequests)
 		default:
 			_, err := token.IssueToken(&userInDb.ID, token.Confirmation)
@@ -74,79 +76,42 @@ func RegistrationHandleFunc(w http.ResponseWriter, r *http.Request, m *mailer.Ma
 	)
 	m.IssueMail(*mailOrder)
 
-    fmt.Fprint(w, "User created successfully, please verify your email to proceed!\n")
+	fmt.Fprint(w, "User created successfully, please verify your email to proceed!\n")
 	return nil
 }
 
 func ValidationHandle(w http.ResponseWriter, r *http.Request) *utils.ResponseError {
-    if r.Method != http.MethodGet {
-        return utils.NewResponseError("Invalid Method", http.StatusMethodNotAllowed)
-    }
-    
-    token := r.URL.Query().Get("token")
-    
-    if (token == "") {
-        return utils.NewResponseError("Invalid parameters", http.StatusBadRequest)
-    }
-    
-    storedId, err := tokenService.ValidateToken(token)
-    if err != nil {
-        return utils.NewResponseError(err.Error(), http.StatusInternalServerError)
-    }
-
-    err = models.ValidateUser(*storedId)
-    if err != nil {
-        return utils.NewResponseError(err.Error(), http.StatusInternalServerError)
-    }
-
-    err = tokenService.ExpireToken(token)
-    if err != nil {
-        return utils.NewResponseError(err.Error(), http.StatusInternalServerError)
-    }
-    w.WriteHeader(http.StatusOK)
-    fmt.Fprint(w, "Vc foi viadado com sucesso!")
-    return nil
-}
-
-func PasswordResetHandle(w http.ResponseWriter, r *http.Request, m *mailer.Mailer) *utils.ResponseError{
-	if r.Method != http.MethodPost{
-		return utils.NewResponseError("Invalid method", http.StatusMethodNotAllowed)
+	if r.Method != http.MethodGet {
+		return utils.NewResponseError("Invalid Method", http.StatusMethodNotAllowed)
 	}
-	
-	ct := r.Header.Get("Content-Type")
-	if ct == "" {
-		return utils.NewResponseError("Bad Content-Type", http.StatusBadRequest)
-	} 
-	
-	formBuffer, err := io.ReadAll(r.Body)
+
+	token := r.URL.Query().Get("token")
+
+	if token == "" {
+		return utils.NewResponseError("Invalid parameters", http.StatusBadRequest)
+	}
+
+	storedId, err := tokenService.ValidateToken(token)
 	if err != nil {
-		return handlesUtils.NewResponseError(err.Error(), http.StatusBadRequest)
+		if _, ok := err.(tokenService.InvaildTokenError); ok {
+			err = tokenService.NewTokenValidationError(tokenService.InvalidToken)
+		}
+		return utils.NewResponseError(
+			err.Error(),
+			http.StatusBadRequest,
+		)
 	}
-	userRegistration, err := authUtils.SerializeRegistration(&formBuffer)
+
+	err = models.ValidateUser(*storedId)
 	if err != nil {
-		return handlesUtils.NewResponseError(err.Error(), http.StatusInternalServerError)
+		return utils.NewResponseError(err.Error(), http.StatusInternalServerError)
 	}
 
-	userInDb, err := models.GetUser(userRegistration)
-	if err != nil && err != mongo.ErrNoDocuments {
-		return handlesUtils.NewResponseError("Email not registered", http.StatusNotFound)
-	}
-
-	resetToken, err := tokenService.IssueToken(&userInDb.ID, tokenService.PasswordReset)
+	err = tokenService.ExpireToken(token)
 	if err != nil {
-		return handlesUtils.NewResponseError(err.Error(), http.StatusInternalServerError)
+		return utils.NewResponseError(err.Error(), http.StatusInternalServerError)
 	}
-
-
-	mailOrder := mailer.NewMailerOrder(
-		userRegistration.Email,
-		mailer.RecoverPasswordMail,
-		&map[string]string{
-			"resetToken": *resetToken,
-		},
-	)
-	m.IssueMail(*mailOrder)
-
-    fmt.Fprint(w, "Password reset request issued, please verify your email to proceed!\n")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "Vc foi viadado com sucesso!")
 	return nil
 }

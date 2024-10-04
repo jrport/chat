@@ -1,6 +1,7 @@
 package handles
 
 import (
+	"chat/api/handles/auth/passwords"
 	"chat/api/handles/auth/registrations"
 	"chat/api/handles/auth/sessions"
 	"chat/api/handles/utils"
@@ -28,10 +29,18 @@ func (r *Router) SetupRoutes() {
 		handleFunc: registration.RegistrationHandleFunc,
 	}
 
+	passwordHandle := HandleWithMailer{
+		mailerService: r.Mailer,
+		handleFunc: passwords.PasswordResetTokenHandle,
+	}
+
 	http.Handle("/register", registrationHandle)
-	http.HandleFunc("/verify", HandlerFuncWithError(registration.ValidationHandle))
+	http.Handle("/forgot", passwordHandle)
+	http.HandleFunc("/validate", HandlerFuncWithError(registration.ValidationHandle))
+	http.HandleFunc("/reset", HandlerFuncWithError(passwords.ResetPasswordHandle))
 	http.HandleFunc("/login", HandlerFuncWithError(sessions.NewSessionHandle))
 	http.HandleFunc("/logout", HandlerFuncWithError(sessions.TerminateSessionHandle))
+	http.HandleFunc("/verify", HandlerFuncWithError(sessions.ValidateSession))
 	
 
 	slog.Info("Routes ready")

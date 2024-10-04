@@ -9,7 +9,7 @@
     - [x] Actually send the token email
 
 - [x] Session
-- [ ] Password Recovery
+- [-] Password Recovery
     1) Envia email na rota de forgot password
     2) A gente emite um token de reset e envia o link pro email
     3) Ele responde na rota de reset password com o token no header com nova senha pra conta

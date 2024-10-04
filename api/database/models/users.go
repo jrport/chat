@@ -19,8 +19,8 @@ func CreateUser(userAccount *utils.UserRegistration) (*primitive.ObjectID, error
 	if err != nil {
 		return nil, err
 	}
-    
-    err = userAccount.Hash()
+
+	err = userAccount.Hash()
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,36 @@ func ValidateUser(userId string) error {
 	}
 
 	filter := bson.D{bson.E{Key: "_id", Value: id}}
-    update := bson.M{"$set": bson.M{"Confirmed": true}}
+	update := bson.M{"$set": bson.M{"Confirmed": true}}
+	err = users.FindOneAndUpdate(ctx, filter, update).Err()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func UpdateUserPassword(userId string, userAccount *utils.UserRegistration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	users, err := database.GetCollection("users")
+	if err != nil {
+		return err
+	}
+
+	id, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return err
+	}
+
+	err = userAccount.Hash()
+	if err != nil {
+		return err
+	}
+
+	filter := bson.D{bson.E{Key: "_id", Value: id}}
+	update := bson.M{"$set": bson.M{"Password": userAccount.Password}}
 	err = users.FindOneAndUpdate(ctx, filter, update).Err()
 	if err != nil {
 		return err

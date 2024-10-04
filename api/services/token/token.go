@@ -1,14 +1,58 @@
 package token
 
 import (
-	"chat/api/redis"
 	"context"
 	"math/rand"
 	"strings"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+func GetClient() (*redis.Client, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr: ":6379",
+	})
+
+	status := rdb.Ping(ctx)
+	if err := status.Err(); err != nil {
+		return nil, err
+	}
+
+	return rdb, nil
+}
+
+type InvaildTokenError struct {
+	ErrorType TokenErrorType
+}
+
+type TokenErrorType int
+
+const (
+	ExpiredSession TokenErrorType = iota
+	InvalidToken
+)
+
+func (i InvaildTokenError) Error() string {
+	switch i.ErrorType {
+	case ExpiredSession:
+		return "Expired Session"
+	// case InvalidToken:
+	// 	return "Invalid or Expired Token"
+	default:
+		return "Invalid or Expired Token"
+	}
+}
+
+func NewTokenValidationError(errorType TokenErrorType) *InvaildTokenError {
+	return &InvaildTokenError{
+		ErrorType: errorType,
+	}
+}
 
 type TokenKind int
 
@@ -22,7 +66,7 @@ func IssueToken(uid *primitive.ObjectID, tokenType TokenKind) (*string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	rdbClient, err := redis.GetClient()
+	rdbClient, err := GetClient()
 	if err != nil {
 		return nil, err
 	}
@@ -33,13 +77,13 @@ func IssueToken(uid *primitive.ObjectID, tokenType TokenKind) (*string, error) {
 	}
 
 	uidHexed := uid.Hex()
-	
+
 	var expirationTime time.Duration
-	switch tokenType{
+	switch tokenType {
 	case Confirmation:
-		expirationTime = time.Minute*10
+		expirationTime = time.Minute * 10
 	case Session:
-		expirationTime = time.Minute*60
+		expirationTime = time.Minute * 60
 	}
 
 	err = rdbClient.Set(ctx, *token, uidHexed, expirationTime).Err()
@@ -73,13 +117,15 @@ func ValidateToken(token string) (*string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	client, err := redis.GetClient()
+	client, err := GetClient()
 	if err != nil {
 		return nil, err
 	}
 
 	userId, err := client.Get(ctx, token).Result()
-	if err != nil {
+	if err != nil && err == redis.Nil {
+		return nil, InvaildTokenError{}
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -90,7 +136,7 @@ func ExpireToken(token string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	client, err := redis.GetClient()
+	client, err := GetClient()
 	if err != nil {
 		return err
 	}

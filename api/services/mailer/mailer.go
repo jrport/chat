@@ -58,7 +58,8 @@ func (m *Mailer)Run() {
 		}
 		switch job.MailType {
 		case RecoverPasswordMail:
-			go m.SendForgotPasswordMail(job.Destination)	
+			token := job.Params["resetToken"]
+			go m.SendForgotPasswordMail(job.Destination, token)	
 		case ValidationTokenMail:
 			token := job.Params["verificationToken"]
 			go m.SendValidationMail(job.Destination, token)

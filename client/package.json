@@ -1,0 +1,11 @@
+{
+  "name": "front",
+  "version": "1.0.0",
+  "description": "Frontend for basic chat app",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "author": "jrport",
+  "license": "ISC"
+}

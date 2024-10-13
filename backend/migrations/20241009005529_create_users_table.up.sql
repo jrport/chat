@@ -1,0 +1,1 @@
+CREATE TABLE users (id INT PRIMARY KEY, email TEXT UNIQUE, name TEXT UNIQUE, password TEXT );

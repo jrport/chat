@@ -1,3 +1,3 @@
 run:
-	go build -o chat ./cmd/chat/main.go 
-	./chat
+	go build -o app ./cmd/main.go
+	./app 8080

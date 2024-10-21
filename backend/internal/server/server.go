@@ -16,18 +16,17 @@ type App struct {
 	Store  *sql.DB
 }
 
-func loggerToFile(filePath string, l *log.Logger) {
+func loggerToFile(filePath string) *log.Logger {
 	fh, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR, os.ModePerm)
 	if err != nil {
 		log.Fatalf("Error on logger creation: %s", err.Error())
 	}
 
-	l = log.New(fh, "Chat-Server", log.LstdFlags|log.Lshortfile)
+	return log.New(fh, "Chat-Server", log.LstdFlags|log.Lshortfile)
 }
 
 func NewApp(port, stdout string) *App {
-	var l *log.Logger
-	loggerToFile(stdout, l)
+	l := loggerToFile(stdout)
 
 	mu := http.NewServeMux()
 	serv := NewServer(port, mu, l)
@@ -42,7 +41,7 @@ func NewApp(port, stdout string) *App {
 		l.Fatalf("Error pinging database: %v", err.Error())
 	}
 
-	l.Printf("Success on ping, connection working!")
+	l.Println("Success on ping, db connection working!")
 
 	return &App{
 		Mux:    mu,

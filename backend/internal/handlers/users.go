@@ -1,44 +1,54 @@
 package handlers
 
 import (
-	"fmt"
+	"database/sql"
 	"jport/chat/backend/internal/errors"
-	"jport/chat/backend/internal/json"
+	"jport/chat/backend/internal/serialization"
 	"net/http"
 	"strings"
 )
 
-func loginHandler(_ http.ResponseWriter, r *http.Request) error {
-	credentials, err := json.GetUserLogin(r.Body)
+func LoginHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) error {
+	credentials, err := serialization.GetUserLogin(r.Body)
 	if err != nil {
 		return err
 	}
 
-	if strings.TrimSpace(credentials.Login) == "" || strings.TrimSpace(credentials.Password) == "" {
-		return errors.NewHttpError(http.StatusUnauthorized, "No empty fields.")
+	if strings.TrimSpace(credentials.Username) == "" {
+		return errors.NewHttpError(http.StatusUnauthorized, "Username is obligatory.")
+	}
+	if strings.TrimSpace(credentials.Password) == "" {
+		return errors.NewHttpError(http.StatusUnauthorized, "Password is obligatory.")
 	}
 
-	print(fmt.Sprintf("Login: %v\nPassword: %v\n", credentials.Login, credentials.Password))
 	return nil
 }
 
-func registrationHandler(_ http.ResponseWriter, r *http.Request) error {
-	credentials, err := json.GetUserRegistration(r.Body)
+func RegistrationHandler(db *sql.DB, _ http.ResponseWriter, r *http.Request) error {
+	credentials, err := serialization.GetUserRegistration(r.Body)
 	if err != nil {
 		return err
 	}
 
-	if strings.TrimSpace(credentials.Email) == "" || strings.TrimSpace(credentials.Password) == "" || strings.TrimSpace(credentials.Login) == "" || strings.TrimSpace(credentials.Login) == "" {
-		return errors.NewHttpError(http.StatusUnauthorized, "No empty fields.")
+	if strings.TrimSpace(credentials.Email) == "" {
+		return errors.NewHttpError(http.StatusBadRequest, "Email can't be empty")
 	}
 
-	if strings.TrimSpace(credentials.Login) == "" || strings.TrimSpace(credentials.Password) == "" {
+	if strings.TrimSpace(credentials.Username) == "" {
+		return errors.NewHttpError(http.StatusBadRequest, "Usename can't be empty")
+	}
+
+	if strings.TrimSpace(credentials.Password) == "" {
+		return errors.NewHttpError(http.StatusBadRequest, "Password can't be empty")
+	}
+
+	if strings.TrimSpace(credentials.Username) == "" || strings.TrimSpace(credentials.Password) == "" {
 		return errors.NewHttpError(http.StatusBadRequest, "Password and Password Confirmation must be equal.")
 	}
 
+	// TODO AQUi
 	// if err := users.CreateUser(credentials.Email, credentials.Login, credentials.Password); err != nil {
 	// 	return err
 	// }
-
 	return nil
 }

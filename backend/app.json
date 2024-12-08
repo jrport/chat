@@ -1,0 +1,2 @@
+{"time":"2024-12-08T00:52:17.154485534-03:00","level":"INFO","source":{"function":"jport/chat/backend/internal/server.(*App).Run","file":"/home/jrport/repos/chat/backend/internal/server/server.go","line":36},"msg":"Server listening on - :8080"}
+{"time":"2024-12-08T00:52:18.324512871-03:00","level":"INFO","source":{"function":"jport/chat/backend/internal/handlers.SetupRoutes.HandleWithLoggingAndError.func1","file":"/home/jrport/repos/chat/backend/internal/handlers/handlers.go","line":18},"msg":"Incoming request from [::1]:45024 for /register"}

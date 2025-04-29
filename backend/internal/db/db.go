@@ -2,13 +2,18 @@ package db
 
 import (
 	"database/sql"
-	_ "github.com/ncruces/go-sqlite3/driver"
-	_ "github.com/ncruces/go-sqlite3/embed"
+	_"modernc.org/sqlite"
 )
 
 func SetupDb(filePath string) (*sql.DB, error){
-	db, err := sql.Open("sqlite3", "file:" + filePath)
+	db, err := sql.Open("sqlite", "file:///home/jrport/repos/chat/backend/" + filePath)
 	if err != nil {
+		return nil, err
+	}
+
+	err = db.Ping()
+	if err != nil {
+		print("Error on database ping.")
 		return nil, err
 	}
 

@@ -5,7 +5,7 @@ import (
 	"jport/chat/backend/internal/db"
 	"jport/chat/backend/internal/handlers"
 	logging "jport/chat/backend/internal/logger"
-	"jport/chat/backend/internal/server"
+	"jport/chat/backend/internal/app"
 	"os"
 )
 
@@ -27,7 +27,7 @@ func main() {
 		panic(err.Error())
 	}
 
-	app := server.NewApp(os.Args[1], logger, dbConn)
+	app := app.NewApp(os.Args[1], logger, dbConn)
 	
 	handlers.SetupRoutes(app)
 	if err := app.Run(); err != nil {

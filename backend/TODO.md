@@ -1,5 +1,7 @@
 # TODO
-- [ ] Create user registration db operation
+- [x] Check for content-type 
+- [x] Create user registration db operation
+- [ ] Setup migrations
 - [ ] Create mailing service?
 - [ ] Create mail confirmation routes
     - [ ] Account confirmation

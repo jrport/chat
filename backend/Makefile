@@ -1,9 +1,10 @@
-export HASH_SALT := batata
+BUILD_MAIN=go build -o main ./cmd/main
+BUILD_MIGRATE=go build -o migrate ./cmd/migrate
 
-run: 
-	go build -o chat ./cmd/chat/main.go
-	./chat 8080 app.json chat.db 
+run:
+	$(BUILD_MAIN)
+	./main
 
-clean_run: 
-	rm app.json
-	run
+migrate:
+	$(BUILD_MIGRATE)
+

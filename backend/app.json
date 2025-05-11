@@ -1,2 +1,0 @@
-{"time":"2024-12-23T11:32:51.276915018-03:00","level":"INFO","source":{"function":"jport/chat/backend/internal/app.(*App).Run","file":"/home/jrport/repos/chat/backend/internal/app/server.go","line":36},"msg":"Server listening on - :8080"}
-080"}
